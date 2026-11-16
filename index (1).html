@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cipher Lab — QWERTY & Caesar Encoder</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --cyan: #38bdf8;
+    --green: #10b981;
+    --purple: #a855f7;
+    --amber: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    max-width: 840px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 14px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.5px; }
+  .tabs {
+    display: flex;
+    background: #090c10;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px;
+    gap: 4px;
+  }
+  .tab {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 8px 14px;
+    border-radius: 7px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab.active {
+    background: var(--cyan);
+    color: #090c10;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 650px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+  }
+  label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  textarea {
+    width: 100%;
+    height: 130px;
+    background: #090c10;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    font-size: 1rem;
+    font-family: 'Consolas', monospace;
+    resize: vertical;
+  }
+  textarea:focus { outline: none; border-color: var(--cyan); }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin: 16px 0;
+    align-items: center;
+  }
+  select, button {
+    background: var(--panel);
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  select:hover, button:hover { border-color: var(--cyan); }
+  button.primary { background: var(--cyan); color: #090c10; border: none; }
+  button.primary:hover { opacity: 0.9; }
+  button.crack { background: rgba(168, 85, 247, 0.15); color: var(--purple); border-color: rgba(168, 85, 247, 0.5); }
+  button.crack:hover { background: rgba(168, 85, 247, 0.25); }
+
+  .keyboard {
+    margin-top: 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    text-align: center;
+    overflow-x: auto;
+  }
+  .kb-legend {
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 4px 0 12px; }
+  .kb-row { display: flex; justify-content: center; gap: 6px; margin-bottom: 6px; flex-wrap: wrap; }
+  .key {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #090c10;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 0.95rem;
+    font-weight: bold;
+    transition: transform 0.1s, background 0.15s;
+  }
+  .key.source {
+    background: var(--cyan);
+    color: #000;
+    border-color: var(--cyan);
+    transform: translateY(-2px);
+  }
+  .key.target {
+    background: var(--green);
+    color: #000;
+    border-color: var(--green);
+    transform: translateY(-2px);
+  }
+
+  #crackResults {
+    display: none;
+    margin-top: 16px;
+    background: var(--panel);
+    border: 1px solid var(--purple);
+    border-radius: 12px;
+    padding: 16px;
+    max-height: 360px;
+    overflow-y: auto;
+  }
+  .crack-item {
+    background: #090c10;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-top: 8px;
+    font-family: monospace;
+  }
+  .crack-label { color: var(--purple); font-size: 0.8rem; font-weight: bold; margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🔐 Multi-Cipher Lab</h1>
+  <div class="tabs">
+    <button class="tab active" id="tabQwerty" onclick="setMode('qwerty')">⌨️ QWERTY Shift</button>
+    <button class="tab" id="tabCaesar" onclick="setMode('caesar')">🏛️ Caesar Cipher</button>
+  </div>
+</header>
+
+<div class="controls">
+  <div id="qwertyControls" style="display:flex; gap:10px; flex-wrap:wrap;">
+    <select id="qDirection" onchange="update()">
+      <option value="right">Shift Right →</option>
+      <option value="left">Shift Left ←</option>
+      <option value="up">Shift Up ↑</option>
+      <option value="down">Shift Down ↓</option>
+    </select>
+    <select id="qSteps" onchange="update()">
+      <option value="1">1 Key Step</option>
+      <option value="2">2 Key Steps</option>
+      <option value="3">3 Key Steps</option>
+    </select>
+  </div>
+
+  <div id="caesarControls" style="display:none; gap:10px; flex-wrap:wrap;">
+    <select id="cDirection" onchange="update()">
+      <option value="encode">Encode (+ Shift)</option>
+      <option value="decode">Decode (− Shift)</option>
+    </select>
+    <select id="cShift" onchange="update()"></select>
+  </div>
+
+  <button onclick="swapText()">⇄ Swap</button>
+  <button class="primary" id="copyBtn" onclick="copyOutput()">Copy Result</button>
+  <button onclick="copyShareLink()" id="linkBtn">🔗 Secret Link</button>
+  <button class="crack" onclick="toggleCrack()">🔓 Auto-Crack</button>
+</div>
+
+<div class="grid">
+  <div class="card">
+    <label><span>Input Message</span><span id="charCount">0 chars</span></label>
+    <textarea id="input" placeholder="Type here or paste a secret message..."></textarea>
+  </div>
+  <div class="card">
+    <label><span id="outputLabel">QWERTY Output</span><span style="color:var(--green)">LIVE</span></label>
+    <textarea id="output" readonly placeholder="Result appears automatically..."></textarea>
+  </div>
+</div>
+
+<div class="keyboard">
+  <div class="kb-legend">
+    <span id="vizTitle">Live Key Visualizer:</span>
+    <span class="dot" style="background:var(--cyan)"></span> Original
+    <span class="dot" style="background:var(--green)"></span> Shifted
+  </div>
+  <div id="kbContainer"></div>
+</div>
+
+<div id="crackResults">
+  <label style="color:var(--purple)"><span id="crackTitle">🔓 Brute-Force Decoder</span></label>
+  <div id="crackList"></div>
+</div>
+
+<script>
+  let mode = "qwerty";
+
+  const LOWER_GRID = [
+    "1234567890-=",
+    "qwertyuiop[]",
+    "asdfghjkl;'",
+    "zxcvbnm,./"
+  ];
+  const UPPER_GRID = [
+    "!@#$%^&*()_+",
+    "QWERTYUIOP{}",
+    "ASDFGHJKL:\"",
+    "ZXCVBNM<>?"
+  ];
+  const ALPHABET = "abcdefghijklmnopqrstuvwxyz";
+
+  const cShiftEl = document.getElementById("cShift");
+  for (let i = 1; i <= 25; i++) {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = i === 13 ? `Shift ${i} (ROT13)` : `Shift ${i} Letters`;
+    if (i === 3) opt.selected = true;
+    cShiftEl.appendChild(opt);
+  }
+
+  function shiftQwertyChar(char, dir, steps) {
+    let grid = null, r = -1, c = -1;
+    for (let row = 0; row < LOWER_GRID.length; row++) {
+      if (LOWER_GRID[row].includes(char)) {
+        grid = LOWER_GRID; r = row; c = LOWER_GRID[row].indexOf(char); break;
+      }
+      if (UPPER_GRID[row].includes(char)) {
+        grid = UPPER_GRID; r = row; c = UPPER_GRID[row].indexOf(char); break;
+      }
+    }
+    if (!grid) return { out: char, srcKey: null, dstKey: null };
+
+    let nr = r, nc = c;
+    if (dir === "right") nc = (c + steps) % grid[r].length;
+    if (dir === "left")  nc = (c - steps + grid[r].length * 10) % grid[r].length;
+    if (dir === "down")  { nr = (r + steps) % grid.length; nc = Math.min(c, grid[nr].length - 1); }
+    if (dir === "up")    { nr = (r - steps + grid.length * 10) % grid.length; nc = Math.min(c, grid[nr].length - 1); }
+
+    return {
+      out: grid[nr][nc],
+      srcKey: LOWER_GRID[r][c],
+      dstKey: LOWER_GRID[nr][nc]
+    };
+  }
+
+  function shiftCaesarChar(char, shift) {
+    const lower = char.toLowerCase();
+    const idx = ALPHABET.indexOf(lower);
+    if (idx === -1) return { out: char, srcKey: null, dstKey: null };
+    const newIdx = ((idx + shift) % 26 + 26) % 26;
+    const shiftedLower = ALPHABET[newIdx];
+    const out = char === char.toUpperCase() ? shiftedLower.toUpperCase() : shiftedLower;
+    return { out, srcKey: lower, dstKey: shiftedLower };
+  }
+
+  function runQwerty(text, dir, steps) {
+    let result = "", lastSrc = null, lastDst = null;
+    for (let ch of text) {
+      const res = shiftQwertyChar(ch, dir, steps);
+      result += res.out;
+      if (res.srcKey) { lastSrc = res.srcKey; lastDst = res.dstKey; }
+    }
+    return { result, lastSrc, lastDst };
+  }
+
+  function runCaesar(text, shift) {
+    let result = "", lastSrc = null, lastDst = null;
+    for (let ch of text) {
+      const res = shiftCaesarChar(ch, shift);
+      result += res.out;
+      if (res.srcKey) { lastSrc = res.srcKey; lastDst = res.dstKey; }
+    }
+    return { result, lastSrc, lastDst };
+  }
+
+  function buildVisualizer() {
+    const kbContainer = document.getElementById("kbContainer");
+    kbContainer.innerHTML = "";
+    const rows = mode === "qwerty" ? LOWER_GRID : ["abcdefghijklm", "nopqrstuvwxyz"];
+    document.getElementById("vizTitle").textContent =
+      mode === "qwerty" ? "Live Keyboard Visualizer:" : "Live Alphabet Visualizer:";
+
+    rows.forEach(row => {
+      const rowDiv = document.createElement("div");
+      rowDiv.className = "kb-row";
+      for (let ch of row) {
+        const keyDiv = document.createElement("div");
+        keyDiv.className = "key";
+        keyDiv.dataset.key = ch;
+        keyDiv.textContent = ch.toUpperCase();
+        rowDiv.appendChild(keyDiv);
+      }
+      kbContainer.appendChild(rowDiv);
+    });
+  }
+
+  function highlightKeys(src, dst) {
+    document.querySelectorAll(".key").forEach(k => {
+      k.classList.remove("source", "target");
+      if (k.dataset.key === src) k.classList.add("source");
+      else if (k.dataset.key === dst) k.classList.add("target");
+    });
+  }
+
+  function setMode(newMode) {
+    mode = newMode;
+    document.getElementById("tabQwerty").classList.toggle("active", mode === "qwerty");
+    document.getElementById("tabCaesar").classList.toggle("active", mode === "caesar");
+    document.getElementById("qwertyControls").style.display = mode === "qwerty" ? "flex" : "none";
+    document.getElementById("caesarControls").style.display = mode === "caesar" ? "flex" : "none";
+    document.getElementById("outputLabel").textContent =
+      mode === "qwerty" ? "QWERTY Output" : "Caesar Output";
+    buildVisualizer();
+    update();
+  }
+
+  const inputEl = document.getElementById("input");
+  const outputEl = document.getElementById("output");
+
+  function update() {
+    const text = inputEl.value;
+    let res;
+    if (mode === "qwerty") {
+      const dir = document.getElementById("qDirection").value;
+      const steps = parseInt(document.getElementById("qSteps").value);
+      res = runQwerty(text, dir, steps);
+    } else {
+      const dir = document.getElementById("cDirection").value;
+      const shiftVal = parseInt(document.getElementById("cShift").value);
+      const effectiveShift = dir === "encode" ? shiftVal : -shiftVal;
+      res = runCaesar(text, effectiveShift);
+    }
+    outputEl.value = res.result;
+    document.getElementById("charCount").textContent = `${text.length} chars`;
+    highlightKeys(res.lastSrc, res.lastDst);
+    if (document.getElementById("crackResults").style.display === "block") renderCrack();
+  }
+
+  function swapText() {
+    inputEl.value = outputEl.value;
+    if (mode === "qwerty") {
+      const dirEl = document.getElementById("qDirection");
+      const flip = { right: "left", left: "right", up: "down", down: "up" };
+      dirEl.value = flip[dirEl.value];
+    } else {
+      const dirEl = document.getElementById("cDirection");
+      dirEl.value = dirEl.value === "encode" ? "decode" : "encode";
+    }
+    update();
+  }
+
+  function copyOutput() {
+    navigator.clipboard.writeText(outputEl.value);
+    const btn = document.getElementById("copyBtn");
+    btn.textContent = "✓ Copied!";
+    setTimeout(() => btn.textContent = "Copy Result", 1500);
+  }
+
+  function copyShareLink() {
+    const encoded = encodeURIComponent(outputEl.value);
+    const url = `${window.location.origin}${window.location.pathname}#${mode}=${encoded}`;
+    navigator.clipboard.writeText(url);
+    const btn = document.getElementById("linkBtn");
+    btn.textContent = "✓ Link Copied!";
+    setTimeout(() => btn.textContent = "🔗 Secret Link", 1800);
+  }
+
+  function toggleCrack() {
+    const box = document.getElementById("crackResults");
+    box.style.display = box.style.display === "block" ? "none" : "block";
+    if (box.style.display === "block") renderCrack();
+  }
+
+  function renderCrack() {
+    const list = document.getElementById("crackList");
+    if (mode === "qwerty") {
+      document.getElementById("crackTitle").textContent = "🔓 QWERTY Brute-Force Decoder";
+      const text = inputEl.value || "vsm upi drr yjos";
+      const modes = [
+        ["Left 1 Key (Decodes Right-Shift)", "left", 1],
+        ["Right 1 Key (Decodes Left-Shift)", "right", 1],
+        ["Up 1 Row", "up", 1],
+        ["Down 1 Row", "down", 1],
+        ["Left 2 Keys", "left", 2],
+        ["Right 2 Keys", "right", 2]
+      ];
+      list.innerHTML = modes.map(([label, d, s]) => `
+        <div class="crack-item">
+          <div class="crack-label">${label}</div>
+          <div>${runQwerty(text, d, s).result}</div>
+        </div>
+      `).join("");
+    } else {
+      document.getElementById("crackTitle").textContent = "🔓 Caesar Brute-Force Decoder (All 25 Rotations)";
+      const text = inputEl.value || "Khoor Zruog! WKLV LV D VHFUHW.";
+      let html = "";
+      for (let s = 1; s <= 25; s++) {
+        html += `
+          <div class="crack-item">
+            <div class="crack-label">Decode Shift -${s} (Encode +${26 - s})</div>
+            <div>${runCaesar(text, -s).result}</div>
+          </div>
+        `;
+      }
+      list.innerHTML = html;
+    }
+  }
+
+  if (window.location.hash.startsWith("#caesar=")) {
+    setMode("caesar");
+    inputEl.value = decodeURIComponent(window.location.hash.slice(8));
+    document.getElementById("cDirection").value = "decode";
+  } else if (window.location.hash.startsWith("#qwerty=")) {
+    setMode("qwerty");
+    inputEl.value = decodeURIComponent(window.location.hash.slice(8));
+    document.getElementById("qDirection").value = "left";
+  } else {
+    buildVisualizer();
+  }
+
+  inputEl.addEventListener("input", update);
+  update();
+</script>
+</body>
+</html>
